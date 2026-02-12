@@ -151,21 +151,13 @@ final class StatusBarController {
 
     // MARK: - Status Bar Text
 
-    private func formatTokens(_ count: Int) -> String {
-        if count < 1000 { return "\(count) tokens" }
-        let k = Double(count) / 1000.0
-        if k < 10 { return String(format: "%.1fk tokens", k) }
-        return "\(Int(k))k tokens"
-    }
-
     private func updateStatusBarText() {
         guard let button = statusItem.button else { return }
-        let tokens = currentStateData.tokenCount ?? 0
         var text = ""
 
         switch currentState {
         case .working:
-            text = tokens > 0 ? " \(formatTokens(tokens))" : ""
+            text = " fine, on it"
         case .complete:
             text = " done!"
         case .error:

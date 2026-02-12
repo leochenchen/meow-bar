@@ -31,7 +31,7 @@ The cat changes color and expression based on what Claude Code is doing:
 |-------|-------|-----------|------|------|
 | **idle** | White | Head tilting | *(none)* | No active session, relaxing |
 | **your turn** | Yellow | Head tilting | `your turn` | Session active, waiting for user input |
-| **working** | Green | Cat + bouncing ball | `3.2k tokens` | Claude is thinking and using tools |
+| **working** | Green | Cat + bouncing ball | `fine, on it` | Claude is thinking and using tools |
 | **done!** | Green | Happy eyes + sparkles | `done!` | Task complete, tail wagging |
 | **oops** | Red | Big O\_O eyes looking right | `oops` | A tool call failed |
 
@@ -156,7 +156,7 @@ MIT
 |------|------|------|------|----------|
 | **空闲** | 白色 | 歪头 | *(无)* | 没有活跃会话，猫咪在放松 |
 | **轮到你了** | 黄色 | 歪头 | `your turn` | 会话中，等待你输入 |
-| **工作中** | 绿色 | 猫咪 + 弹跳球 | `3.2k tokens` | Claude 正在思考和使用工具 |
+| **工作中** | 绿色 | 猫咪 + 弹跳球 | `fine, on it` | Claude 正在思考和使用工具 |
 | **完成!** | 绿色 | 开心眯眼 + 闪烁 | `done!` | 任务完成，尾巴摇摇 |
 | **出错** | 红色 | 瞪大眼睛向右看 | `oops` | 工具调用失败 |
 
@@ -281,7 +281,7 @@ Claude Code の状態に応じて、猫の色と表情が変わります：
 |------|-----|--------------|---------|-----------|
 | **待機** | 白 | 首かしげ | *(なし)* | アクティブなセッションなし、リラックス中 |
 | **あなたの番** | 黄色 | 首かしげ | `your turn` | セッション中、ユーザー入力待ち |
-| **作業中** | 緑 | 猫 + 跳ねるボール | `3.2k tokens` | Claude が思考中・ツール使用中 |
+| **作業中** | 緑 | 猫 + 跳ねるボール | `fine, on it` | Claude が思考中・ツール使用中 |
 | **完了!** | 緑 | 幸せな目 + キラキラ | `done!` | タスク完了、しっぽフリフリ |
 | **エラー** | 赤 | 大きな O\_O の目で右を見る | `oops` | ツール呼び出し失敗 |
 
