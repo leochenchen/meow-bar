@@ -1,0 +1,10 @@
+{
+  "name": "meow-bar",
+  "version": "1.0.0",
+  "description": "Animated pixel cat in your macOS menu bar reflecting Claude Code's current state",
+  "author": {
+    "name": "erokchen"
+  },
+  "license": "MIT",
+  "keywords": ["macos", "menu-bar", "cat", "pixel-art", "animation"]
+}

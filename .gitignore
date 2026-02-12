@@ -1,0 +1,18 @@
+# Swift build
+.build/
+*.xcodeproj
+xcuserdata/
+DerivedData/
+.swiftpm/
+
+# macOS
+.DS_Store
+*.dSYM
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Generated frames are checked in for convenience
+# Regenerate with: python3 resources/generate-frames.py
