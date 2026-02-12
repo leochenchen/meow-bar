@@ -54,9 +54,8 @@ enum CatState: String, Codable, CaseIterable {
     /// Auto-transition back after this duration (nil = stay until next event)
     var autoTransitionDuration: TimeInterval? {
         switch self {
-        case .complete: return 5.0
-        case .error: return 3.0
-        default: return nil
+        case .complete: return 6.0
+        default: return nil  // error stays as error until next event
         }
     }
 

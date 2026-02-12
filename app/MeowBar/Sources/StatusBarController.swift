@@ -38,7 +38,7 @@ final class StatusBarController {
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            button.imagePosition = .imageOnly
+            button.imagePosition = .imageLeft
         }
 
         loadFrames(for: .idle)
@@ -61,6 +61,7 @@ final class StatusBarController {
         currentStateData = stateData
 
         guard newState != currentState else {
+            updateStatusBarText()
             rebuildMenu()
             return
         }
@@ -77,9 +78,10 @@ final class StatusBarController {
 
         loadFrames(for: newState)
         startAnimation()
+        updateStatusBarText()
         rebuildMenu()
 
-        // Auto-transition (complete → idle after 5s, error → idle after 3s)
+        // Auto-transition (complete → idle after 6s)
         autoTransitionTimer?.invalidate()
         if let duration = newState.autoTransitionDuration {
             autoTransitionTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
@@ -145,6 +147,31 @@ final class StatusBarController {
         }
     }
 
+    // MARK: - Status Bar Text
+
+    private func updateStatusBarText() {
+        guard let button = statusItem.button else { return }
+        let tools = currentStateData.toolCallCount ?? 0
+        var text = ""
+
+        if currentState == .idle {
+            text = ""  // No text when sleeping
+        } else if currentState == .error {
+            text = " \u{26A0}"
+        } else if let startStr = currentStateData.sessionStartTime, !startStr.isEmpty {
+            let duration = calcDurationShort(from: startStr)
+            text = " \(tools)T \(duration)"
+        } else if tools > 0 {
+            text = " \(tools)T"
+        }
+
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
+            .baselineOffset: 1
+        ]
+        button.attributedTitle = NSAttributedString(string: text, attributes: attrs)
+    }
+
     // MARK: - Menu
 
     private func rebuildMenu() {
@@ -179,6 +206,18 @@ final class StatusBarController {
             let errItem = NSMenuItem(title: "\u{26A0} \(err)", action: nil, keyEquivalent: "")
             errItem.isEnabled = false
             menu.addItem(errItem)
+        }
+
+        // Feed the cat when complete!
+        if currentState == .complete {
+            menu.addItem(NSMenuItem.separator())
+            let feedItem = NSMenuItem(
+                title: "\u{1F356} Feed the cat",
+                action: #selector(feedCat),
+                keyEquivalent: ""
+            )
+            feedItem.target = self
+            menu.addItem(feedItem)
         }
 
         menu.addItem(NSMenuItem.separator())
@@ -297,6 +336,15 @@ final class StatusBarController {
         rebuildMenu()
     }
 
+    @objc private func feedCat() {
+        // Feed the cat meat! Transition to idle (satisfied)
+        currentState = .idle
+        loadFrames(for: .idle)
+        startAnimation()
+        updateStatusBarText()
+        rebuildMenu()
+    }
+
     @objc private func quit() {
         NSApplication.shared.terminate(nil)
     }
@@ -311,6 +359,15 @@ final class StatusBarController {
         let display = DateFormatter()
         display.dateFormat = "HH:mm:ss"
         return display.string(from: date)
+    }
+
+    private func calcDurationShort(from isoString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let start = formatter.date(from: isoString) else { return "" }
+        let elapsed = Int(Date().timeIntervalSince(start))
+        if elapsed < 60 { return "\(elapsed)s" }
+        if elapsed < 3600 { return "\(elapsed / 60)m" }
+        return "\(elapsed / 3600)h\((elapsed % 3600) / 60)m"
     }
 
     private func calcDuration(from isoString: String) -> String {
