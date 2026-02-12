@@ -54,16 +54,14 @@ enum CatState: String, Codable, CaseIterable {
     /// Auto-transition back after this duration (nil = stay until next event)
     var autoTransitionDuration: TimeInterval? {
         switch self {
+        case .complete: return 5.0
         case .error: return 3.0
         default: return nil
         }
     }
 
     var autoTransitionTarget: CatState {
-        switch self {
-        case .error: return .working
-        default: return .idle
-        }
+        return .idle
     }
 }
 
@@ -81,6 +79,11 @@ struct MeowStateData: Codable {
     var toolName: String?
     var errorMessage: String?
     var eventsLog: [EventEntry]?
+    // Stats
+    var sessionStartTime: String?
+    var toolCallCount: Int?
+    var promptCount: Int?
+    var errorCount: Int?
 
     enum CodingKeys: String, CodingKey {
         case state, timestamp
@@ -89,6 +92,10 @@ struct MeowStateData: Codable {
         case toolName = "tool_name"
         case errorMessage = "error_message"
         case eventsLog = "events_log"
+        case sessionStartTime = "session_start_time"
+        case toolCallCount = "tool_call_count"
+        case promptCount = "prompt_count"
+        case errorCount = "error_count"
     }
 
     static let empty = MeowStateData(
@@ -98,6 +105,10 @@ struct MeowStateData: Codable {
         lastEvent: nil,
         toolName: nil,
         errorMessage: nil,
-        eventsLog: nil
+        eventsLog: nil,
+        sessionStartTime: nil,
+        toolCallCount: nil,
+        promptCount: nil,
+        errorCount: nil
     )
 }

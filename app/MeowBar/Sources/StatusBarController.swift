@@ -18,42 +18,39 @@ final class StatusBarController {
         get { UserDefaults.standard.object(forKey: "notificationsEnabled") as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: "notificationsEnabled") }
     }
+    private var statsEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: "statsEnabled") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "statsEnabled") }
+    }
+    private var eventsEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: "eventsEnabled") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "eventsEnabled") }
+    }
 
     init() {
-        // Resolve frames directory: check bundle first, then known install paths
         let bundleFrames = Bundle.main.resourcePath.map { "\($0)/Frames" } ?? ""
         let homeFrames = FileManager.default.homeDirectoryForCurrentUser.path + "/.meow-bar/frames"
         if FileManager.default.fileExists(atPath: bundleFrames) {
             framesDir = bundleFrames
-        } else if FileManager.default.fileExists(atPath: homeFrames) {
-            framesDir = homeFrames
         } else {
             framesDir = homeFrames
         }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-
         if let button = statusItem.button {
             button.imagePosition = .imageOnly
         }
 
-        // Load initial frames and start animation
         loadFrames(for: .idle)
         startAnimation()
-
-        // Build menu
         rebuildMenu()
 
-        // Start watching state file
         stateWatcher.onStateChange = { [weak self] state in
             self?.handleStateChange(state)
         }
         stateWatcher.start()
 
-        // Request notification permission
         NotificationManager.shared.requestPermission()
-
-        // Start idle detection timer
         resetIdleTimer()
     }
 
@@ -64,14 +61,13 @@ final class StatusBarController {
         currentStateData = stateData
 
         guard newState != currentState else {
-            // Still update the menu even if state hasn't changed
             rebuildMenu()
             return
         }
 
         currentState = newState
 
-        // Send notification for important state changes
+        // Send macOS notification for important events
         if notificationsEnabled {
             NotificationManager.shared.sendStateNotification(
                 state: newState,
@@ -79,27 +75,22 @@ final class StatusBarController {
             )
         }
 
-        // Update animation
         loadFrames(for: newState)
         startAnimation()
-
-        // Rebuild menu with new info
         rebuildMenu()
 
-        // Handle auto-transitions
+        // Auto-transition (complete → idle after 5s, error → idle after 3s)
         autoTransitionTimer?.invalidate()
         if let duration = newState.autoTransitionDuration {
             autoTransitionTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
                 guard let self = self else { return }
-                let target = newState.autoTransitionTarget
-                self.currentState = target
-                self.loadFrames(for: target)
+                self.currentState = newState.autoTransitionTarget
+                self.loadFrames(for: self.currentState)
                 self.startAnimation()
                 self.rebuildMenu()
             }
         }
 
-        // Reset idle detection
         resetIdleTimer()
     }
 
@@ -114,12 +105,11 @@ final class StatusBarController {
             let path = "\(framesDir)/\(name).png"
             if let image = NSImage(contentsOfFile: path) {
                 image.size = NSSize(width: 22, height: 22)
-                image.isTemplate = false // Keep colors!
+                image.isTemplate = false
                 frames.append(image)
             }
         }
 
-        // Fallback: if no frames loaded, create a text-based icon
         if frames.isEmpty {
             let fallback = createTextIcon(state.emoji)
             frames = [fallback]
@@ -130,13 +120,8 @@ final class StatusBarController {
 
     private func startAnimation() {
         animationTimer?.invalidate()
-
         guard !frames.isEmpty else { return }
-
-        // Show first frame immediately
         statusItem.button?.image = frames[0]
-
-        // If only one frame, no need to animate
         guard frames.count > 1 else { return }
 
         let interval = currentState.animationInterval
@@ -198,8 +183,45 @@ final class StatusBarController {
 
         menu.addItem(NSMenuItem.separator())
 
-        // Recent events
-        if let events = currentStateData.eventsLog, !events.isEmpty {
+        // Session stats (toggleable)
+        if statsEnabled {
+            let statsHeader = NSMenuItem(title: "Session Stats", action: nil, keyEquivalent: "")
+            statsHeader.isEnabled = false
+            menu.addItem(statsHeader)
+
+            // Duration
+            if let startStr = currentStateData.sessionStartTime, !startStr.isEmpty {
+                let duration = calcDuration(from: startStr)
+                let item = NSMenuItem(title: "  Duration: \(duration)", action: nil, keyEquivalent: "")
+                item.isEnabled = false
+                menu.addItem(item)
+            }
+
+            // Prompts
+            let prompts = currentStateData.promptCount ?? 0
+            let promptItem = NSMenuItem(title: "  Prompts: \(prompts)", action: nil, keyEquivalent: "")
+            promptItem.isEnabled = false
+            menu.addItem(promptItem)
+
+            // Tool calls
+            let tools = currentStateData.toolCallCount ?? 0
+            let toolItem = NSMenuItem(title: "  Tool calls: \(tools)", action: nil, keyEquivalent: "")
+            toolItem.isEnabled = false
+            menu.addItem(toolItem)
+
+            // Errors
+            let errors = currentStateData.errorCount ?? 0
+            if errors > 0 {
+                let errItem = NSMenuItem(title: "  Errors: \(errors)", action: nil, keyEquivalent: "")
+                errItem.isEnabled = false
+                menu.addItem(errItem)
+            }
+
+            menu.addItem(NSMenuItem.separator())
+        }
+
+        // Recent events (toggleable)
+        if eventsEnabled, let events = currentStateData.eventsLog, !events.isEmpty {
             let eventsHeader = NSMenuItem(title: "Recent Events", action: nil, keyEquivalent: "")
             eventsHeader.isEnabled = false
             menu.addItem(eventsHeader)
@@ -221,19 +243,36 @@ final class StatusBarController {
             menu.addItem(NSMenuItem.separator())
         }
 
-        // Notification toggle
-        let notifItem = NSMenuItem(
-            title: "Notifications",
+        // Toggle options
+        let statsToggle = NSMenuItem(
+            title: "Show Stats",
+            action: #selector(toggleStats),
+            keyEquivalent: ""
+        )
+        statsToggle.target = self
+        statsToggle.state = statsEnabled ? .on : .off
+        menu.addItem(statsToggle)
+
+        let eventsToggle = NSMenuItem(
+            title: "Show Events",
+            action: #selector(toggleEvents),
+            keyEquivalent: ""
+        )
+        eventsToggle.target = self
+        eventsToggle.state = eventsEnabled ? .on : .off
+        menu.addItem(eventsToggle)
+
+        let notifToggle = NSMenuItem(
+            title: "Push Notifications",
             action: #selector(toggleNotifications),
             keyEquivalent: ""
         )
-        notifItem.target = self
-        notifItem.state = notificationsEnabled ? .on : .off
-        menu.addItem(notifItem)
+        notifToggle.target = self
+        notifToggle.state = notificationsEnabled ? .on : .off
+        menu.addItem(notifToggle)
 
         menu.addItem(NSMenuItem.separator())
 
-        // Quit
         let quitItem = NSMenuItem(title: "Quit MeowBar", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
@@ -242,6 +281,16 @@ final class StatusBarController {
     }
 
     // MARK: - Actions
+
+    @objc private func toggleStats() {
+        statsEnabled.toggle()
+        rebuildMenu()
+    }
+
+    @objc private func toggleEvents() {
+        eventsEnabled.toggle()
+        rebuildMenu()
+    }
 
     @objc private func toggleNotifications() {
         notificationsEnabled.toggle()
@@ -257,20 +306,28 @@ final class StatusBarController {
     private func formatTime(_ isoString: String) -> String {
         let formatter = ISO8601DateFormatter()
         guard let date = formatter.date(from: isoString) else {
-            return isoString.suffix(8).description
+            return String(isoString.suffix(8))
         }
         let display = DateFormatter()
         display.dateFormat = "HH:mm:ss"
         return display.string(from: date)
     }
 
+    private func calcDuration(from isoString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let start = formatter.date(from: isoString) else { return "—" }
+        let elapsed = Int(Date().timeIntervalSince(start))
+        if elapsed < 60 { return "\(elapsed)s" }
+        if elapsed < 3600 { return "\(elapsed / 60)m \(elapsed % 60)s" }
+        return "\(elapsed / 3600)h \((elapsed % 3600) / 60)m"
+    }
+
     private func createTextIcon(_ text: String) -> NSImage {
         let size = NSSize(width: 22, height: 22)
         let image = NSImage(size: size)
         image.lockFocus()
-
         let attrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 14)
+            .font: NSFont.systemFont(ofSize: 16)
         ]
         let str = NSAttributedString(string: text, attributes: attrs)
         let strSize = str.size()
@@ -279,7 +336,6 @@ final class StatusBarController {
             y: (size.height - strSize.height) / 2
         )
         str.draw(at: point)
-
         image.unlockFocus()
         image.isTemplate = false
         return image

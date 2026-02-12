@@ -1,6 +1,7 @@
 #!/bin/bash
 # MeowBar - Claude Code hook script
 # Maps lifecycle events to 4 cat states: idle, working, complete, error
+# Tracks session stats: tool calls, prompts, errors, duration
 
 EVENT_NAME="${1:-unknown}"
 STATE_FILE="$HOME/.claude/meow-state.json"
@@ -54,6 +55,30 @@ else
   existing='{}'
 fi
 
+# Calculate stat increments
+inc_tools=0
+inc_prompts=0
+inc_errors=0
+session_start_time=$(echo "$existing" | jq -r '.session_start_time // ""' 2>/dev/null)
+
+case "$EVENT_NAME" in
+  SessionStart)
+    session_start_time="$timestamp"
+    # Reset counters on new session
+    existing=$(echo "$existing" | jq '.tool_call_count = 0 | .prompt_count = 0 | .error_count = 0 | .events_log = []')
+    ;;
+  UserPromptSubmit)
+    inc_prompts=1
+    ;;
+  PostToolUse)
+    inc_tools=1
+    ;;
+  PostToolUseFailure)
+    inc_tools=1
+    inc_errors=1
+    ;;
+esac
+
 # Build event log entry and update state
 new_event=$(jq -n \
   --arg event "$EVENT_NAME" \
@@ -68,6 +93,10 @@ echo "$existing" | jq \
   --arg le "$EVENT_NAME" \
   --arg tn "$tool_name" \
   --arg em "$error_msg" \
+  --arg sst "$session_start_time" \
+  --argjson it "$inc_tools" \
+  --argjson ip "$inc_prompts" \
+  --argjson ie "$inc_errors" \
   --argjson ne "$new_event" \
   '{
     state: $state,
@@ -76,6 +105,10 @@ echo "$existing" | jq \
     last_event: $le,
     tool_name: $tn,
     error_message: $em,
+    session_start_time: $sst,
+    tool_call_count: ((.tool_call_count // 0) + $it),
+    prompt_count: ((.prompt_count // 0) + $ip),
+    error_count: ((.error_count // 0) + $ie),
     events_log: ((.events_log // []) + [$ne] | .[-20:])
   }' > "$TEMP_FILE" 2>/dev/null
 
