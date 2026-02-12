@@ -6,6 +6,7 @@ final class StatusBarController {
     private var animationTimer: Timer?
     private var autoTransitionTimer: Timer?
     private var idleTimer: Timer?
+    private var statusTextTimer: Timer?
     private var currentFrameIndex = 0
     private var currentState: CatState = .idle
     private var currentStateData: MeowStateData = .empty
@@ -49,6 +50,13 @@ final class StatusBarController {
             self?.handleStateChange(state)
         }
         stateWatcher.start()
+
+        updateStatusBarText()
+
+        // Refresh duration display every 30s
+        statusTextTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            self?.updateStatusBarText()
+        }
 
         NotificationManager.shared.requestPermission()
         resetIdleTimer()
