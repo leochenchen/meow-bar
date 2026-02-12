@@ -14,20 +14,6 @@ final class StatusBarController {
     private let stateWatcher = StateWatcher()
     private let framesDir: String
 
-    // User preferences
-    private var notificationsEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: "notificationsEnabled") as? Bool ?? true }
-        set { UserDefaults.standard.set(newValue, forKey: "notificationsEnabled") }
-    }
-    private var statsEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: "statsEnabled") as? Bool ?? true }
-        set { UserDefaults.standard.set(newValue, forKey: "statsEnabled") }
-    }
-    private var eventsEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: "eventsEnabled") as? Bool ?? true }
-        set { UserDefaults.standard.set(newValue, forKey: "eventsEnabled") }
-    }
-
     init() {
         let bundleFrames = Bundle.main.resourcePath.map { "\($0)/Frames" } ?? ""
         let homeFrames = FileManager.default.homeDirectoryForCurrentUser.path + "/.meow-bar/frames"
@@ -77,12 +63,10 @@ final class StatusBarController {
         currentState = newState
 
         // Send macOS notification for important events
-        if notificationsEnabled {
-            NotificationManager.shared.sendStateNotification(
-                state: newState,
-                errorMessage: stateData.errorMessage
-            )
-        }
+        NotificationManager.shared.sendStateNotification(
+            state: newState,
+            errorMessage: stateData.errorMessage
+        )
 
         loadFrames(for: newState)
         startAnimation()
@@ -108,9 +92,19 @@ final class StatusBarController {
 
     private func loadFrames(for state: CatState) {
         frames = []
-        let prefix = state.framePrefix
+        // Use yellow "waiting" frames when idle with active session
+        let prefix: String
+        let count: Int
+        if state == .idle,
+           let sid = currentStateData.sessionId, !sid.isEmpty {
+            prefix = "waiting"
+            count = 4
+        } else {
+            prefix = state.framePrefix
+            count = state.frameCount
+        }
 
-        for i in 0..<state.frameCount {
+        for i in 0..<count {
             let name = "\(prefix)-\(i)"
             let path = "\(framesDir)/\(name).png"
             if let image = NSImage(contentsOfFile: path) {
@@ -157,20 +151,31 @@ final class StatusBarController {
 
     // MARK: - Status Bar Text
 
+    private func formatTokens(_ count: Int) -> String {
+        if count < 1000 { return "\(count) tokens" }
+        let k = Double(count) / 1000.0
+        if k < 10 { return String(format: "%.1fk tokens", k) }
+        return "\(Int(k))k tokens"
+    }
+
     private func updateStatusBarText() {
         guard let button = statusItem.button else { return }
-        let tools = currentStateData.toolCallCount ?? 0
+        let tokens = currentStateData.tokenCount ?? 0
         var text = ""
 
-        if currentState == .idle {
-            text = ""  // No text when sleeping
-        } else if currentState == .error {
-            text = " \u{26A0}"
-        } else if let startStr = currentStateData.sessionStartTime, !startStr.isEmpty {
-            let duration = calcDurationShort(from: startStr)
-            text = " \(tools)T \(duration)"
-        } else if tools > 0 {
-            text = " \(tools)T"
+        switch currentState {
+        case .working:
+            text = tokens > 0 ? " \(formatTokens(tokens))" : ""
+        case .complete:
+            text = " done!"
+        case .error:
+            text = " oops"
+        case .idle:
+            if let sid = currentStateData.sessionId, !sid.isEmpty {
+                text = " your turn"
+            } else {
+                text = ""
+            }
         }
 
         let attrs: [NSAttributedString.Key: Any] = [
@@ -230,96 +235,6 @@ final class StatusBarController {
 
         menu.addItem(NSMenuItem.separator())
 
-        // Session stats (toggleable)
-        if statsEnabled {
-            let statsHeader = NSMenuItem(title: "Session Stats", action: nil, keyEquivalent: "")
-            statsHeader.isEnabled = false
-            menu.addItem(statsHeader)
-
-            // Duration
-            if let startStr = currentStateData.sessionStartTime, !startStr.isEmpty {
-                let duration = calcDuration(from: startStr)
-                let item = NSMenuItem(title: "  Duration: \(duration)", action: nil, keyEquivalent: "")
-                item.isEnabled = false
-                menu.addItem(item)
-            }
-
-            // Prompts
-            let prompts = currentStateData.promptCount ?? 0
-            let promptItem = NSMenuItem(title: "  Prompts: \(prompts)", action: nil, keyEquivalent: "")
-            promptItem.isEnabled = false
-            menu.addItem(promptItem)
-
-            // Tool calls
-            let tools = currentStateData.toolCallCount ?? 0
-            let toolItem = NSMenuItem(title: "  Tool calls: \(tools)", action: nil, keyEquivalent: "")
-            toolItem.isEnabled = false
-            menu.addItem(toolItem)
-
-            // Errors
-            let errors = currentStateData.errorCount ?? 0
-            if errors > 0 {
-                let errItem = NSMenuItem(title: "  Errors: \(errors)", action: nil, keyEquivalent: "")
-                errItem.isEnabled = false
-                menu.addItem(errItem)
-            }
-
-            menu.addItem(NSMenuItem.separator())
-        }
-
-        // Recent events (toggleable)
-        if eventsEnabled, let events = currentStateData.eventsLog, !events.isEmpty {
-            let eventsHeader = NSMenuItem(title: "Recent Events", action: nil, keyEquivalent: "")
-            eventsHeader.isEnabled = false
-            menu.addItem(eventsHeader)
-
-            for event in events.suffix(5) {
-                let timeStr = formatTime(event.time)
-                let detail = event.detail.isEmpty ? event.event : "\(event.event): \(event.detail)"
-                let item = NSMenuItem(title: "  \(timeStr) \(detail)", action: nil, keyEquivalent: "")
-                item.isEnabled = false
-                if let font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular) as NSFont? {
-                    item.attributedTitle = NSAttributedString(
-                        string: "  \(timeStr) \(detail)",
-                        attributes: [.font: font]
-                    )
-                }
-                menu.addItem(item)
-            }
-
-            menu.addItem(NSMenuItem.separator())
-        }
-
-        // Toggle options
-        let statsToggle = NSMenuItem(
-            title: "Show Stats",
-            action: #selector(toggleStats),
-            keyEquivalent: ""
-        )
-        statsToggle.target = self
-        statsToggle.state = statsEnabled ? .on : .off
-        menu.addItem(statsToggle)
-
-        let eventsToggle = NSMenuItem(
-            title: "Show Events",
-            action: #selector(toggleEvents),
-            keyEquivalent: ""
-        )
-        eventsToggle.target = self
-        eventsToggle.state = eventsEnabled ? .on : .off
-        menu.addItem(eventsToggle)
-
-        let notifToggle = NSMenuItem(
-            title: "Push Notifications",
-            action: #selector(toggleNotifications),
-            keyEquivalent: ""
-        )
-        notifToggle.target = self
-        notifToggle.state = notificationsEnabled ? .on : .off
-        menu.addItem(notifToggle)
-
-        menu.addItem(NSMenuItem.separator())
-
         let quitItem = NSMenuItem(title: "Quit MeowBar", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
@@ -328,21 +243,6 @@ final class StatusBarController {
     }
 
     // MARK: - Actions
-
-    @objc private func toggleStats() {
-        statsEnabled.toggle()
-        rebuildMenu()
-    }
-
-    @objc private func toggleEvents() {
-        eventsEnabled.toggle()
-        rebuildMenu()
-    }
-
-    @objc private func toggleNotifications() {
-        notificationsEnabled.toggle()
-        rebuildMenu()
-    }
 
     @objc private func feedCat() {
         // Feed the cat meat! Transition to idle (satisfied)
@@ -358,34 +258,6 @@ final class StatusBarController {
     }
 
     // MARK: - Helpers
-
-    private func formatTime(_ isoString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        guard let date = formatter.date(from: isoString) else {
-            return String(isoString.suffix(8))
-        }
-        let display = DateFormatter()
-        display.dateFormat = "HH:mm:ss"
-        return display.string(from: date)
-    }
-
-    private func calcDurationShort(from isoString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        guard let start = formatter.date(from: isoString) else { return "" }
-        let elapsed = Int(Date().timeIntervalSince(start))
-        if elapsed < 60 { return "\(elapsed)s" }
-        if elapsed < 3600 { return "\(elapsed / 60)m" }
-        return "\(elapsed / 3600)h\((elapsed % 3600) / 60)m"
-    }
-
-    private func calcDuration(from isoString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        guard let start = formatter.date(from: isoString) else { return "—" }
-        let elapsed = Int(Date().timeIntervalSince(start))
-        if elapsed < 60 { return "\(elapsed)s" }
-        if elapsed < 3600 { return "\(elapsed / 60)m \(elapsed % 60)s" }
-        return "\(elapsed / 3600)h \((elapsed % 3600) / 60)m"
-    }
 
     private func createTextIcon(_ text: String) -> NSImage {
         let size = NSSize(width: 22, height: 22)

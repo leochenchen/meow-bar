@@ -83,6 +83,7 @@ struct MeowStateData: Codable {
     var toolCallCount: Int?
     var promptCount: Int?
     var errorCount: Int?
+    var tokenCount: Int?
 
     enum CodingKeys: String, CodingKey {
         case state, timestamp
@@ -95,6 +96,7 @@ struct MeowStateData: Codable {
         case toolCallCount = "tool_call_count"
         case promptCount = "prompt_count"
         case errorCount = "error_count"
+        case tokenCount = "token_count"
     }
 
     static let empty = MeowStateData(
@@ -108,6 +110,7 @@ struct MeowStateData: Codable {
         sessionStartTime: nil,
         toolCallCount: nil,
         promptCount: nil,
-        errorCount: nil
+        errorCount: nil,
+        tokenCount: nil
     )
 }
