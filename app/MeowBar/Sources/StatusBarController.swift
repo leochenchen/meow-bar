@@ -113,7 +113,7 @@ final class StatusBarController {
             let name = "\(prefix)-\(i)"
             let path = "\(framesDir)/\(name).png"
             if let image = NSImage(contentsOfFile: path) {
-                image.size = NSSize(width: 18, height: 18)
+                image.size = NSSize(width: 22, height: 22)
                 image.isTemplate = false // Keep colors!
                 frames.append(image)
             }
@@ -265,7 +265,7 @@ final class StatusBarController {
     }
 
     private func createTextIcon(_ text: String) -> NSImage {
-        let size = NSSize(width: 18, height: 18)
+        let size = NSSize(width: 22, height: 22)
         let image = NSImage(size: size)
         image.lockFocus()
 

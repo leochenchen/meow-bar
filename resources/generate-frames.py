@@ -1,521 +1,284 @@
 #!/usr/bin/env python3
 """
 MeowBar Pixel Cat Frame Generator
-Generates 36x36 (@2x) colored pixel art cat PNGs for each state.
-Each pixel in the design grid is 2x2 actual pixels (18x18 logical -> 36x36 @2x).
+Generates 44x44 (@2x for 22x22 logical) colored pixel art cat PNGs.
+4 states: idle (white), working (green), complete (gold), error (red).
 
 Usage: pip install Pillow && python generate-frames.py
-Output: ../app/MeowBar/Resources/Frames/
 """
 
 import os
 from PIL import Image, ImageDraw
 
-# Output directory
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "..", "app", "MeowBar", "Resources", "Frames")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# Canvas: 18x18 logical grid, each cell = 2px -> 36x36 output
-GRID = 18
+# 22x22 logical grid, each cell = 2px -> 44x44 output
+GRID = 22
 SCALE = 2
 SIZE = GRID * SCALE
 
 
 def create_frame(pixels, color, bg=(0, 0, 0, 0)):
-    """Create a frame from a pixel map. pixels is list of (x, y) tuples to fill."""
     img = Image.new("RGBA", (SIZE, SIZE), bg)
     draw = ImageDraw.Draw(img)
     for x, y in pixels:
-        draw.rectangle(
-            [x * SCALE, y * SCALE, (x + 1) * SCALE - 1, (y + 1) * SCALE - 1],
-            fill=color,
-        )
+        if 0 <= x < GRID and 0 <= y < GRID:
+            draw.rectangle(
+                [x * SCALE, y * SCALE, (x + 1) * SCALE - 1, (y + 1) * SCALE - 1],
+                fill=color,
+            )
     return img
 
 
 def save_frame(img, name):
     path = os.path.join(OUTPUT_DIR, f"{name}.png")
     img.save(path)
-    print(f"  Generated: {name}.png")
+    print(f"  {name}.png")
 
 
 # ============================================================
-# Cat pixel art definitions
-# Each cat is drawn on an 18x18 grid
-# ============================================================
-
-# Common body parts for reuse
-def cat_ears(x_off=0, y_off=0):
-    """Pointed cat ears"""
-    return [
-        # Left ear
-        (4 + x_off, 3 + y_off),
-        (5 + x_off, 2 + y_off),
-        (5 + x_off, 3 + y_off),
-        (6 + x_off, 3 + y_off),
-        # Right ear
-        (11 + x_off, 3 + y_off),
-        (12 + x_off, 2 + y_off),
-        (12 + x_off, 3 + y_off),
-        (13 + x_off, 3 + y_off),
-    ]
-
-
-def cat_head(x_off=0, y_off=0):
-    """Round cat head"""
-    pixels = []
-    # Top of head
-    for x in range(5, 13):
-        pixels.append((x + x_off, 4 + y_off))
-    # Sides of head
-    for y in range(5, 8):
-        pixels.append((4 + x_off, y + y_off))
-        pixels.append((13 + x_off, y + y_off))
-    # Eyes
-    pixels.append((6 + x_off, 5 + y_off))
-    pixels.append((11 + x_off, 5 + y_off))
-    # Nose
-    pixels.append((8 + x_off, 6 + y_off))
-    pixels.append((9 + x_off, 6 + y_off))
-    # Mouth
-    pixels.append((7 + x_off, 7 + y_off))
-    pixels.append((10 + x_off, 7 + y_off))
-    # Bottom of head
-    for x in range(5, 13):
-        pixels.append((x + x_off, 7 + y_off))
-    return pixels
-
-
-def cat_body_sitting(x_off=0, y_off=0):
-    """Sitting cat body"""
-    pixels = []
-    # Neck
-    for x in range(6, 12):
-        pixels.append((x + x_off, 8 + y_off))
-    # Body
-    for y in range(9, 13):
-        pixels.append((5 + x_off, y + y_off))
-        pixels.append((12 + x_off, y + y_off))
-        for x in range(6, 12):
-            pixels.append((x + x_off, y + y_off))
-    # Bottom
-    for x in range(5, 13):
-        pixels.append((x + x_off, 13 + y_off))
-    # Paws
-    pixels.append((5 + x_off, 14 + y_off))
-    pixels.append((6 + x_off, 14 + y_off))
-    pixels.append((11 + x_off, 14 + y_off))
-    pixels.append((12 + x_off, 14 + y_off))
-    return pixels
-
-
-# ============================================================
-# State: idle (sleeping cat, gray-blue)
+# IDLE: Sleeping curled-up cat (white)
 # ============================================================
 def generate_idle():
-    color = (120, 150, 180, 255)  # Gray-blue
-    print("Generating: idle (sleeping cat)")
+    color = (230, 230, 235, 255)  # Clean white
+    zzz_color = (180, 180, 190, 180)
+    print("idle (sleeping):")
 
-    # Sleeping curled up cat - base shape
-    def sleeping_base():
-        pixels = []
-        # Curled body - oval shape
-        for x in range(4, 14):
-            pixels.append((x, 10))
-            pixels.append((x, 14))
-        for y in range(10, 15):
-            pixels.append((4, y))
-            pixels.append((13, y))
-        for y in range(11, 14):
-            for x in range(5, 13):
-                pixels.append((x, y))
-        # Head tucked in
-        for x in range(5, 9):
-            pixels.append((x, 9))
-        pixels.append((5, 8))
-        pixels.append((6, 8))
+    def sleeping_body():
+        px = []
+        # Curled body - round oval
+        for x in range(5, 17):
+            px.append((x, 12))
+            px.append((x, 17))
+        for y in range(12, 18):
+            px.append((5, y))
+            px.append((16, y))
+        for y in range(13, 17):
+            for x in range(6, 16):
+                px.append((x, y))
+        # Head tucked
+        for x in range(6, 11):
+            px.append((x, 11))
+        px += [(6, 10), (7, 10), (8, 10)]
         # Ear
-        pixels.append((5, 7))
-        pixels.append((7, 8))
-        # Closed eyes (line)
-        pixels.append((6, 9))
-        pixels.append((7, 9))
-        return pixels
+        px += [(6, 9), (7, 9), (6, 8)]
+        # Closed eye (line)
+        px += [(8, 11), (9, 11)]
+        return px
 
-    def tail_left():
-        return [(13, 13), (14, 12), (15, 11)]
-
-    def tail_mid():
-        return [(13, 13), (14, 13), (15, 12)]
-
-    def tail_right():
-        return [(13, 13), (14, 14), (15, 13)]
-
-    base = sleeping_base()
-    tails = [tail_left(), tail_mid(), tail_right(), tail_mid()]
-
-    # Zzz indicators for sleeping
-    zzz_frames = [
-        [(10, 6)],
-        [(10, 6), (11, 5)],
-        [(10, 6), (11, 5), (12, 4)],
-        [(11, 5), (12, 4)],
+    tails = [
+        [(16, 16), (17, 15), (18, 14)],
+        [(16, 16), (17, 16), (18, 15)],
+        [(16, 16), (17, 17), (18, 16)],
+        [(16, 16), (17, 16), (18, 15)],
     ]
 
-    for i, (tail, zzz) in enumerate(zip(tails, zzz_frames)):
-        img = create_frame(base + tail, color)
-        # Draw Zzz in lighter color
-        zzz_img = create_frame(zzz, (160, 190, 220, 200))
-        img = Image.alpha_composite(img, zzz_img)
+    zzz = [
+        [(12, 7)],
+        [(12, 7), (13, 6)],
+        [(12, 7), (13, 6), (14, 5)],
+        [(13, 6), (14, 5)],
+    ]
+
+    base = sleeping_body()
+    for i in range(4):
+        img = create_frame(base + tails[i], color)
+        img = Image.alpha_composite(img, create_frame(zzz[i], zzz_color))
         save_frame(img, f"idle-{i}")
 
 
 # ============================================================
-# State: starting (waking up cat, yellow)
-# ============================================================
-def generate_starting():
-    color = (240, 200, 80, 255)  # Yellow
-    print("Generating: starting (waking up)")
-
-    # Frame 0: still curled up
-    def curled():
-        pixels = []
-        for x in range(4, 14):
-            pixels.append((x, 10))
-            pixels.append((x, 14))
-        for y in range(10, 15):
-            pixels.append((4, y))
-            pixels.append((13, y))
-        for y in range(11, 14):
-            for x in range(5, 13):
-                pixels.append((x, y))
-        for x in range(5, 9):
-            pixels.append((x, 9))
-        pixels.append((5, 8))
-        pixels.append((6, 8))
-        pixels.append((5, 7))
-        return pixels
-
-    # Frame 1: head lifting
-    def head_lifting():
-        pixels = []
-        # Body still low
-        for x in range(5, 13):
-            for y in range(11, 15):
-                pixels.append((x, y))
-        pixels.append((4, 12))
-        pixels.append((4, 13))
-        pixels.append((13, 12))
-        pixels.append((13, 13))
-        # Head rising
-        pixels += cat_ears(0, 1)
-        pixels += cat_head(0, 1)
-        return pixels
-
-    # Frame 2: stretching up
-    def stretching():
-        pixels = cat_ears() + cat_head() + cat_body_sitting()
-        # Stretch marks
-        pixels.append((3, 10))
-        pixels.append((14, 10))
-        return pixels
-
-    frames_data = [curled(), head_lifting(), stretching()]
-    for i, px in enumerate(frames_data):
-        save_frame(create_frame(px, color), f"wakeup-{i}")
-
-
-# ============================================================
-# State: thinking (typing cat, blue)
-# ============================================================
-def generate_thinking():
-    color = (80, 140, 230, 255)  # Blue
-    print("Generating: thinking (typing)")
-
-    base = cat_ears() + cat_head() + cat_body_sitting()
-
-    # Keyboard in front
-    def keyboard():
-        pixels = []
-        for x in range(4, 14):
-            pixels.append((x, 15))
-            pixels.append((x, 16))
-        return pixels
-
-    kb = keyboard()
-
-    # Paw positions for typing animation
-    paw_frames = [
-        # Left paw down
-        [(5, 14), (6, 14), (6, 15)],
-        # Both up
-        [(5, 14), (6, 14), (11, 14), (12, 14)],
-        # Right paw down
-        [(11, 14), (12, 14), (11, 15)],
-        # Both up
-        [(5, 14), (6, 14), (11, 14), (12, 14)],
-    ]
-
-    for i, paws in enumerate(paw_frames):
-        all_px = base + kb + paws
-        save_frame(create_frame(all_px, color), f"typing-{i}")
-
-
-# ============================================================
-# State: working (running cat, green)
+# WORKING: Running cat (green)
 # ============================================================
 def generate_working():
-    color = (80, 200, 120, 255)  # Green
-    print("Generating: working (running)")
+    color = (60, 200, 110, 255)  # Bright green
+    print("working (running):")
 
-    def running_frame(phase):
-        pixels = []
-        y_bob = -1 if phase in (2, 5) else 0  # Bounce up on leap frames
-
-        # Head (slightly forward)
-        for x in range(8, 15):
-            pixels.append((x, 4 + y_bob))
-        pixels.append((7, 5 + y_bob))
-        pixels.append((14, 5 + y_bob))
-        for x in range(7, 15):
-            pixels.append((x, 5 + y_bob))
-        pixels.append((7, 6 + y_bob))
-        pixels.append((14, 6 + y_bob))
-        for x in range(7, 15):
-            pixels.append((x, 6 + y_bob))
-        # Ears
-        pixels.append((8, 3 + y_bob))
-        pixels.append((9, 2 + y_bob))
-        pixels.append((13, 3 + y_bob))
-        pixels.append((14, 2 + y_bob))
-        # Eyes
-        pixels.append((9, 5 + y_bob))
-        pixels.append((12, 5 + y_bob))
-
-        # Body (horizontal, running posture)
-        for x in range(3, 12):
-            pixels.append((x, 7 + y_bob))
-            pixels.append((x, 8 + y_bob))
-        for x in range(2, 10):
-            pixels.append((x, 9 + y_bob))
-
-        # Tail
-        pixels.append((2, 8 + y_bob))
-        pixels.append((1, 7 + y_bob))
-        pixels.append((0, 6 + y_bob))
-
-        # Legs in different positions based on phase
-        if phase == 0:  # Front legs forward, back legs back
-            pixels += [(10, 10 + y_bob), (11, 11 + y_bob), (12, 12 + y_bob)]
-            pixels += [(3, 10 + y_bob), (2, 11 + y_bob), (1, 12 + y_bob)]
-        elif phase == 1:  # Front legs mid, back legs mid
-            pixels += [(10, 10 + y_bob), (10, 11 + y_bob)]
-            pixels += [(4, 10 + y_bob), (4, 11 + y_bob)]
-        elif phase == 2:  # Front legs back, back legs forward (leap)
-            pixels += [(8, 10 + y_bob), (7, 11 + y_bob)]
-            pixels += [(5, 10 + y_bob), (6, 11 + y_bob)]
-        elif phase == 3:  # All legs under
-            pixels += [(9, 10 + y_bob), (9, 11 + y_bob)]
-            pixels += [(5, 10 + y_bob), (5, 11 + y_bob)]
-        elif phase == 4:  # Front forward, back back (opposite of 0)
-            pixels += [(10, 10 + y_bob), (10, 11 + y_bob), (11, 12 + y_bob)]
-            pixels += [(3, 10 + y_bob), (3, 11 + y_bob), (2, 12 + y_bob)]
-        elif phase == 5:  # Leap frame
-            pixels += [(9, 10 + y_bob), (10, 10 + y_bob)]
-            pixels += [(4, 10 + y_bob), (5, 10 + y_bob)]
-
-        return pixels
-
-    for i in range(6):
-        save_frame(create_frame(running_frame(i), color), f"running-{i}")
-
-
-# ============================================================
-# State: error (scared cat, red)
-# ============================================================
-def generate_error():
-    color = (230, 80, 80, 255)  # Red
-    print("Generating: error (scared)")
-
-    def scared_base(arch_level):
-        pixels = []
-        # Ears (flattened / alert)
-        pixels.append((4, 2))
-        pixels.append((3, 1))
-        pixels.append((5, 3))
-        pixels.append((13, 2))
-        pixels.append((14, 1))
-        pixels.append((12, 3))
+    def run_frame(phase):
+        px = []
+        bob = -1 if phase in (2, 5) else 0
 
         # Head
-        for x in range(5, 13):
-            pixels.append((x, 3))
-            pixels.append((x, 6))
-        for y in range(3, 7):
-            pixels.append((5, y))
-            pixels.append((12, y))
-        # Wide eyes (bigger = more scared)
-        pixels.append((7, 4))
-        pixels.append((7, 5))
-        pixels.append((10, 4))
-        pixels.append((10, 5))
-        # Open mouth
-        pixels.append((8, 6))
-        pixels.append((9, 6))
+        for x in range(10, 18):
+            px.append((x, 5 + bob))
+        for x in range(9, 18):
+            px.append((x, 6 + bob))
+            px.append((x, 7 + bob))
+        px.append((9, 6 + bob))
+        px.append((18, 6 + bob))
+        # Ears
+        px += [(10, 4 + bob), (11, 3 + bob), (11, 4 + bob)]
+        px += [(16, 4 + bob), (17, 3 + bob), (17, 4 + bob)]
+        # Eyes
+        px += [(12, 6 + bob), (15, 6 + bob)]
+        # Nose
+        px += [(13, 7 + bob), (14, 7 + bob)]
 
-        # Arched back body
-        arch_y = 7 - arch_level
+        # Body (horizontal running)
         for x in range(4, 14):
-            pixels.append((x, arch_y))
-        for x in range(5, 13):
-            pixels.append((x, arch_y + 1))
-            pixels.append((x, arch_y + 2))
+            px.append((x, 8 + bob))
+            px.append((x, 9 + bob))
+        for x in range(3, 12):
+            px.append((x, 10 + bob))
 
-        # Legs (stiff)
-        pixels += [(5, arch_y + 3), (5, arch_y + 4)]
-        pixels += [(12, arch_y + 3), (12, arch_y + 4)]
+        # Tail
+        px += [(3, 9 + bob), (2, 8 + bob), (1, 7 + bob), (1, 6 + bob)]
 
-        # Puffed tail (going up)
-        pixels.append((3, arch_y))
-        pixels.append((2, arch_y - 1))
-        pixels.append((1, arch_y - 2))
-        pixels.append((2, arch_y - 2))
-        pixels.append((1, arch_y - 1))
+        # Legs
+        if phase == 0:
+            px += [(12, 11 + bob), (13, 12 + bob), (14, 13 + bob)]
+            px += [(5, 11 + bob), (4, 12 + bob), (3, 13 + bob)]
+        elif phase == 1:
+            px += [(12, 11 + bob), (12, 12 + bob), (12, 13 + bob)]
+            px += [(5, 11 + bob), (5, 12 + bob), (5, 13 + bob)]
+        elif phase == 2:
+            px += [(10, 11 + bob), (9, 12 + bob)]
+            px += [(6, 11 + bob), (7, 12 + bob)]
+        elif phase == 3:
+            px += [(11, 11 + bob), (11, 12 + bob)]
+            px += [(6, 11 + bob), (6, 12 + bob)]
+        elif phase == 4:
+            px += [(12, 11 + bob), (13, 12 + bob), (13, 13 + bob)]
+            px += [(4, 11 + bob), (4, 12 + bob), (3, 13 + bob)]
+        elif phase == 5:
+            px += [(11, 11 + bob), (12, 11 + bob)]
+            px += [(5, 11 + bob), (6, 11 + bob)]
 
-        # Fur standing on end
-        if arch_level > 0:
-            pixels.append((6, arch_y - 1))
-            pixels.append((8, arch_y - 1))
-            pixels.append((10, arch_y - 1))
-            pixels.append((12, arch_y - 1))
+        return px
 
-        return pixels
-
-    for i, arch in enumerate([0, 1, 1]):
-        save_frame(create_frame(scared_base(arch), color), f"scared-{i}")
+    for i in range(6):
+        save_frame(create_frame(run_frame(i), color), f"running-{i}")
 
 
 # ============================================================
-# State: complete (happy cat waiting for praise, gold)
+# COMPLETE: Happy cat wagging tail, waiting for praise (gold)
 # ============================================================
 def generate_complete():
-    color = (240, 190, 50, 255)  # Gold
-    sparkle_color = (255, 230, 100, 200)  # Light gold sparkle
-    print("Generating: complete (waiting for praise)")
+    color = (245, 195, 50, 255)  # Gold
+    sparkle_color = (255, 235, 120, 200)
+    print("complete (celebrating):")
 
-    base = cat_ears() + cat_head() + cat_body_sitting()
+    def sitting_cat():
+        px = []
+        # Ears
+        px += [(6, 4), (7, 3), (7, 4), (8, 4)]
+        px += [(14, 4), (15, 3), (15, 4), (16, 4)]
+        # Head
+        for x in range(7, 16):
+            px.append((x, 5))
+            px.append((x, 9))
+        for y in range(5, 10):
+            px.append((6, y))
+            px.append((16, y))
+        for y in range(6, 9):
+            for x in range(7, 16):
+                px.append((x, y))
+        # Happy eyes (^_^)
+        px += [(9, 6), (10, 7), (8, 7)]
+        px += [(13, 6), (14, 7), (12, 7)]
+        # Smile
+        px += [(10, 8), (11, 9), (12, 9), (13, 8)]
+        # Body
+        for y in range(10, 16):
+            for x in range(7, 16):
+                px.append((x, y))
+            px.append((6, y))
+            px.append((16, y))
+        # Bottom + paws
+        for x in range(6, 17):
+            px.append((x, 16))
+        px += [(6, 17), (7, 17), (15, 17), (16, 17)]
+        return px
 
-    # Happy eyes (^_^)
-    happy_eyes = [(6, 5), (7, 5), (11, 5), (10, 5)]
-
-    # Tail wagging positions
     tail_frames = [
-        [(13, 12), (14, 11), (15, 10)],  # Tail up-right
-        [(13, 13), (14, 12), (15, 11)],  # Tail mid
-        [(13, 12), (14, 11), (15, 10), (16, 9)],  # Tail high
-        [(13, 13), (14, 12), (15, 11)],  # Tail mid
+        [(16, 14), (17, 13), (18, 12), (19, 11)],
+        [(16, 15), (17, 14), (18, 13)],
+        [(16, 14), (17, 13), (18, 12), (19, 11), (20, 10)],
+        [(16, 15), (17, 14), (18, 13)],
     ]
 
-    # Sparkle positions that cycle
     sparkle_frames = [
-        [(2, 3), (15, 5)],
-        [(3, 2), (16, 4)],
-        [(1, 4), (14, 3)],
-        [(2, 5), (16, 6)],
+        [(3, 4), (19, 6)],
+        [(4, 3), (20, 5)],
+        [(2, 5), (18, 4)],
+        [(3, 6), (20, 7)],
     ]
 
-    for i, (tail, sparkles) in enumerate(zip(tail_frames, sparkle_frames)):
-        img = create_frame(base + happy_eyes + tail, color)
-        sparkle_img = create_frame(sparkles, sparkle_color)
-        img = Image.alpha_composite(img, sparkle_img)
+    base = sitting_cat()
+    for i in range(4):
+        img = create_frame(base + tail_frames[i], color)
+        img = Image.alpha_composite(img, create_frame(sparkle_frames[i], sparkle_color))
         save_frame(img, f"celebrate-{i}")
 
 
 # ============================================================
-# State: ending (waving cat, purple)
+# ERROR: Scared cat with arched back (red)
 # ============================================================
-def generate_ending():
-    color = (160, 100, 220, 255)  # Purple
-    print("Generating: ending (waving goodbye)")
+def generate_error():
+    color = (230, 70, 70, 255)  # Red
+    print("error (scared):")
 
-    def waving_cat(paw_y):
-        pixels = cat_ears() + cat_head()
-        # Body
-        for y in range(8, 14):
-            for x in range(5, 12):  # Slightly asymmetric for wave
-                pixels.append((x, y))
-            pixels.append((12, y))
-        for x in range(5, 13):
-            pixels.append((x, 13))
-        # Left paw (stationary)
-        pixels.append((5, 14))
-        pixels.append((6, 14))
-        # Right paw (waving up)
-        pixels.append((13, paw_y))
-        pixels.append((14, paw_y))
-        pixels.append((14, paw_y - 1))
-        # Right arm
-        for y in range(paw_y + 1, 10):
-            pixels.append((13, y))
-        # Tail
-        pixels.append((4, 12))
-        pixels.append((3, 11))
-        pixels.append((2, 10))
-        return pixels
+    def scared_cat(fur_level):
+        px = []
+        # Ears (alert, spread wide)
+        px += [(5, 3), (4, 2), (6, 4)]
+        px += [(17, 3), (18, 2), (16, 4)]
+        # Head
+        for x in range(6, 17):
+            px.append((x, 4))
+            px.append((x, 8))
+        for y in range(4, 9):
+            px.append((6, y))
+            px.append((16, y))
+        for y in range(5, 8):
+            for x in range(7, 16):
+                px.append((x, y))
+        # Wide scared eyes (big circles)
+        px += [(9, 5), (9, 6), (9, 7), (10, 5), (10, 7)]
+        px += [(13, 5), (13, 6), (13, 7), (12, 5), (12, 7)]
+        # Open mouth
+        px += [(10, 8), (11, 8), (12, 8)]
 
-    paw_positions = [7, 5, 4, 5]
-    for i, py in enumerate(paw_positions):
-        save_frame(create_frame(waving_cat(py), color), f"wave-{i}")
+        # Arched back
+        arch = 8
+        for x in range(5, 18):
+            px.append((x, arch))
+        for x in range(6, 17):
+            px.append((x, arch + 1))
+            px.append((x, arch + 2))
 
+        # Legs (stiff, spread)
+        px += [(6, 11), (6, 12), (6, 13), (6, 14)]
+        px += [(16, 11), (16, 12), (16, 13), (16, 14)]
 
-# ============================================================
-# State: compacting (thinking cat, teal)
-# ============================================================
-def generate_compacting():
-    color = (70, 190, 190, 255)  # Teal
-    dot_color = (120, 220, 220, 200)
-    print("Generating: compacting (thinking)")
+        # Puffed tail
+        px += [(4, 8), (3, 7), (2, 6), (3, 6), (2, 5), (4, 7)]
 
-    base = cat_ears() + cat_head() + cat_body_sitting()
+        # Fur standing on end
+        if fur_level > 0:
+            px += [(8, 7), (10, 7), (12, 7), (14, 7)]
+            px += [(7, 7), (9, 7), (11, 7), (13, 7), (15, 7)]
 
-    # Head tilted slightly (modify head pixels)
-    tilt = [(14, 5)]  # Extra pixel on right for tilt effect
+        return px
 
-    # Thought bubble dots
-    thought_frames = [
-        [(15, 5)],
-        [(15, 5), (16, 4)],
-        [(15, 5), (16, 4), (16, 3)],
-        [(16, 4), (16, 3), (15, 2)],
-    ]
-
-    # Tail slow sway
-    tail_frames = [
-        [(13, 13), (14, 12)],
-        [(13, 13), (14, 13)],
-        [(13, 13), (14, 14)],
-        [(13, 13), (14, 13)],
-    ]
-
-    for i, (dots, tail) in enumerate(zip(thought_frames, tail_frames)):
-        img = create_frame(base + tilt + tail, color)
-        dot_img = create_frame(dots, dot_color)
-        img = Image.alpha_composite(img, dot_img)
-        save_frame(img, f"thinking-{i}")
+    for i, fur in enumerate([0, 1, 1]):
+        save_frame(create_frame(scared_cat(fur), color), f"scared-{i}")
 
 
-# ============================================================
-# Generate all frames
 # ============================================================
 if __name__ == "__main__":
-    print(f"Generating pixel cat frames to: {OUTPUT_DIR}\n")
+    # Clean old frames
+    for f in os.listdir(OUTPUT_DIR):
+        if f.endswith(".png"):
+            os.remove(os.path.join(OUTPUT_DIR, f))
+
+    print(f"Generating frames to: {OUTPUT_DIR}\n")
     generate_idle()
-    generate_starting()
-    generate_thinking()
     generate_working()
-    generate_error()
     generate_complete()
-    generate_ending()
-    generate_compacting()
-    print(f"\nDone! Generated all frames to {OUTPUT_DIR}")
+    generate_error()
+
+    total = len([f for f in os.listdir(OUTPUT_DIR) if f.endswith(".png")])
+    print(f"\nDone! {total} frames generated.")

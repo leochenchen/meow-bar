@@ -1,32 +1,23 @@
 #!/bin/bash
 # MeowBar - Claude Code hook script
-# Reads lifecycle event data from stdin and updates ~/.claude/meow-state.json
+# Maps lifecycle events to 4 cat states: idle, working, complete, error
 
 EVENT_NAME="${1:-unknown}"
 STATE_FILE="$HOME/.claude/meow-state.json"
 TEMP_FILE="$HOME/.claude/meow-state.tmp.$$"
 
-# Read stdin (Claude Code sends JSON payload)
+# Read stdin
 input=$(cat)
 
-# Extract fields using jq
+# Extract fields
 session_id=$(echo "$input" | jq -r '.session_id // ""' 2>/dev/null || echo "")
 tool_name=$(echo "$input" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
 tool_input_cmd=$(echo "$input" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
 error_msg=""
 
-# Map event to cat state
+# Map events to 4 states
 case "$EVENT_NAME" in
-  SessionStart)
-    state="starting"
-    ;;
-  UserPromptSubmit)
-    state="thinking"
-    ;;
-  PreToolUse)
-    state="working"
-    ;;
-  PostToolUse)
+  SessionStart|UserPromptSubmit|PreToolUse|PostToolUse|PreCompact)
     state="working"
     ;;
   PostToolUseFailure)
@@ -36,18 +27,15 @@ case "$EVENT_NAME" in
   Stop)
     state="complete"
     ;;
-  PreCompact)
-    state="compacting"
-    ;;
   SessionEnd)
-    state="ending"
+    state="idle"
     ;;
   *)
     state="idle"
     ;;
 esac
 
-# Build detail string for event log
+# Build detail string
 detail=""
 if [ -n "$tool_name" ] && [ "$tool_name" != "null" ]; then
   if [ -n "$tool_input_cmd" ] && [ "$tool_input_cmd" != "null" ]; then
@@ -57,17 +45,16 @@ if [ -n "$tool_name" ] && [ "$tool_name" != "null" ]; then
   fi
 fi
 
-# Get current timestamp
 timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# Read existing state file or start fresh
+# Read existing or start fresh
 if [ -f "$STATE_FILE" ]; then
   existing=$(cat "$STATE_FILE" 2>/dev/null || echo '{}')
 else
   existing='{}'
 fi
 
-# Build new event log entry and update state atomically
+# Build event log entry and update state
 new_event=$(jq -n \
   --arg event "$EVENT_NAME" \
   --arg time "$timestamp" \
@@ -92,10 +79,8 @@ echo "$existing" | jq \
     events_log: ((.events_log // []) + [$ne] | .[-20:])
   }' > "$TEMP_FILE" 2>/dev/null
 
-# Atomic replace
 if [ -f "$TEMP_FILE" ]; then
   mv "$TEMP_FILE" "$STATE_FILE"
 fi
 
-# Never block Claude Code
 exit 0

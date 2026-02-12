@@ -35,7 +35,7 @@ final class NotificationManager {
         case .error:
             let msg = errorMessage ?? "Something went wrong"
             send(title: "MeowBar \u{1F640}", body: "Error: \(msg)")
-        case .ending:
+        case .idle:
             send(title: "MeowBar \u{1F44B}", body: "Session ended. Your cat is going to sleep...")
         default:
             break
