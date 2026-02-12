@@ -43,7 +43,7 @@ Inspired by ClashX's running cat — but this one sleeps, types, runs, celebrate
 ### Quick Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/meow-bar.git
+git clone https://github.com/leochenchen/meow-bar.git
 cd meow-bar
 ./install.sh
 ```
