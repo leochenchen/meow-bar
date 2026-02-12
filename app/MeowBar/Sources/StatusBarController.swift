@@ -81,6 +81,7 @@ final class StatusBarController {
                 self.currentState = newState.autoTransitionTarget
                 self.loadFrames(for: self.currentState)
                 self.startAnimation()
+                self.updateStatusBarText()
                 self.rebuildMenu()
             }
         }
